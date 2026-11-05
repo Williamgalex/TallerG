@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sistema Taller - Recepción</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+  <style>
+    @media print {
+      body * { visibility: hidden; }
+      #seccion-impresion, #seccion-impresion * { visibility: visible; }
+      #seccion-impresion { position: absolute; left: 0; top: 0; width: 100%; display: block !important; }
+      .no-print { display: none !important; }
+    }
+  </style>
+</head>
+<body class="bg-slate-900 text-slate-100 min-h-screen p-4 font-sans no-print">
+
+  <!-- Encabezado -->
+  <header class="max-w-md mx-auto flex justify-between items-center pb-4 border-b border-slate-700 mb-6">
+    <h1 class="text-xl font-bold text-blue-400 flex items-center gap-2">
+      <i class="fa-solid fa-wrench"></i> Control de Taller
+    </h1>
+    <button onclick="verLista()" class="bg-slate-800 text-xs text-blue-300 px-3 py-2 rounded-xl border border-slate-700">
+      <i class="fa-solid fa-list"></i> Ver Órdenes (<span id="cant-ordenes">0</span>)
+    </button>
+  </header>
+
+  <main class="max-w-md mx-auto">
+    <!-- VISTA FORMULARIO -->
+    <div id="vista-formulario" class="space-y-4">
+      <form id="form-recepcion" class="space-y-4">
+        
+        <!-- Cliente -->
+        <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-3">
+          <h2 class="text-sm font-semibold text-blue-400">1. Datos del Cliente</h2>
+          <input type="text" id="cli-id" placeholder="Cédula / RIF" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+          <input type="text" id="cli-nombre" placeholder="Nombre y Apellido" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+          <input type="tel" id="cli-tel" placeholder="Teléfono (Ej: 04121234567)" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+        </div>
+
+        <!-- Equipo -->
+        <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-3">
+          <h2 class="text-sm font-semibold text-blue-400">2. Datos del Equipo</h2>
+          
+          <div class="grid grid-cols-3 gap-2" id="grid-tipos">
+            <button type="button" onclick="setTipo('Celular')" class="btn-t bg-blue-600 text-white p-2 rounded-xl text-xs font-bold">Celular</button>
+            <button type="button" onclick="setTipo('Laptop')" class="btn-t bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-bold">Laptop</button>
+            <button type="button" onclick="setTipo('PC')" class="btn-t bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-bold">PC</button>
+            <button type="button" onclick="setTipo('Consola')" class="btn-t bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-bold">Consola</button>
+            <button type="button" onclick="setTipo('Impresora')" class="btn-t bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-bold">Impresora</button>
+            <button type="button" onclick="setTipo('Otro')" class="btn-t bg-slate-700 text-slate-300 p-2 rounded-xl text-xs font-bold">Otro</button>
+          </div>
+
+          <input type="text" id="eq-modelo" placeholder="Marca y Modelo" required class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+          <input type="text" id="eq-clave" placeholder="Clave / Patrón de Desbloqueo" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+          <textarea id="eq-falla" placeholder="Falla reportada..." required rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm"></textarea>
+          <textarea id="eq-obs" placeholder="Detalles / Rayones / Estado físico..." rows="2" class="w-full bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm"></textarea>
+        </div>
+
+        <!-- Cobro -->
+        <div class="bg-slate-800 p-4 rounded-2xl border border-slate-700 space-y-3">
+          <h2 class="text-sm font-semibold text-blue-400">3. Presupuesto</h2>
+          <div class="grid grid-cols-2 gap-2">
+            <input type="number" id="monto-total" step="0.01" placeholder="Monto Total ($)" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+            <input type="number" id="monto-abono" step="0.01" placeholder="Abono ($)" class="bg-slate-900 border border-slate-700 rounded-xl p-3 text-sm">
+          </div>
+        </div>
+
+        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-500 text-white font-bold py-4 rounded-2xl text-base shadow-lg shadow-blue-600/30">
+          Guardar y Generar Orden
+        </button>
+      </form>
+    </div>
+
+    <!-- VISTA LISTA DE ÓRDENES -->
+    <div id="vista-lista" class="hidden space-y-3">
+      <button onclick="verFormulario()" class="w-full bg-slate-800 text-slate-300 p-3 rounded-xl border border-slate-700 text-xs font-bold">
+        ← Volver al Formulario
+      </button>
+      <div id="contenedor-ordenes" class="space-y-3"></div>
+    </div>
+  </main>
+
+  <!-- MODAL DE ACCIONES POST-GUARDADO -->
+  <div id="modal-acciones" class="fixed inset-0 bg-black/85 backdrop-blur-sm z-50 flex items-center justify-center p-4 hidden">
+    <div class="bg-slate-800 border border-slate-700 rounded-2xl p-5 max-w-xs w-full space-y-3 text-center">
+      <i class="fa-solid fa-circle-check text-emerald-400 text-4xl"></i>
+      <h3 class="text-lg font-bold text-slate-100">¡Orden Guardada!</h3>
+      <p class="text-xs text-slate-400" id="txt-num-orden"></p>
+      
+      <div class="space-y-2 pt-2">
+        <button onclick="enviarWhatsApp()" class="w-full bg-emerald-600 hover:bg-emerald-500 text-white p-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+          <i class="fa-brands fa-whatsapp text-lg"></i> Enviar por WhatsApp
+        </button>
+        <button onclick="prepararImpresion('carta')" class="w-full bg-blue-600 hover:bg-blue-500 text-white p-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+          <i class="fa-solid fa-print"></i> Hoja Carta / Guardar PDF
+        </button>
+        <button onclick="prepararImpresion('ticket')" class="w-full bg-slate-700 hover:bg-slate-600 text-white p-3 rounded-xl font-bold text-sm flex items-center justify-center gap-2">
+          <i class="fa-solid fa-receipt"></i> Ticket Térmico (3.5")
+        </button>
+      </div>
+
+      <button onclick="cerrarModal()" class="w-full bg-slate-900 text-slate-400 p-2 rounded-xl text-xs mt-3">Cerrar y Nueva Orden</button>
+    </div>
+  </div>
+
+  <!-- SECCIÓN OCULTA PARA IMPRESIÓN NATIVA -->
+  <div id="seccion-impresion" class="hidden p-4 bg-white text-black font-sans"></div>
+
+  <script>
+    let tipoActual = 'Celular';
+    let ordenActiva = null;
+    let ordenes = JSON.parse(localStorage.getItem('taller_ordenes') || '[]');
+
+    actualizarContador();
+
+    function setTipo(tipo) {
+      tipoActual = tipo;
+      document.querySelectorAll('.btn-t').forEach(b => {
+        b.classList.remove('bg-blue-600', 'text-white');
+        b.classList.add('bg-slate-700', 'text-slate-300');
+      });
+      event.target.classList.add('bg-blue-600', 'text-white');
+      event.target.classList.remove('bg-slate-700', 'text-slate-300');
+    }
+
+    document.getElementById('form-recepcion').addEventListener('submit', (e) => {
+      e.preventDefault();
+      
+      const num = 'ORD-' + Math.floor(100000 + Math.random() * 900000);
+      ordenActiva = {
+        id: num,
+        fecha: new Date().toLocaleDateString() + ' ' + new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}),
+        cliente: {
+          id: document.getElementById('cli-id').value,
+          nombre: document.getElementById('cli-nombre').value,
+          tel: document.getElementById('cli-tel').value
+        },
+        equipo: {
+          tipo: tipoActual,
+          modelo: document.getElementById('eq-modelo').value,
+          clave: document.getElementById('eq-clave').value || 'Sin clave',
+          falla: document.getElementById('eq-falla').value,
+          obs: document.getElementById('eq-obs').value || 'Ninguna'
+        },
+        costos: {
+          total: parseFloat(document.getElementById('monto-total').value || 0).toFixed(2),
+          abono: parseFloat(document.getElementById('monto-abono').value || 0).toFixed(2)
+        }
+      };
+
+      ordenes.unshift(ordenActiva);
+      localStorage.setItem('taller_ordenes', JSON.stringify(ordenes));
+      actualizarContador();
+
+      document.getElementById('txt-num-orden').innerText = `Folio: ${ordenActiva.id}`;
+      document.getElementById('modal-acciones').classList.remove('hidden');
+    });
+
+    function actualizarContador() {
+      document.getElementById('cant-ordenes').innerText = ordenes.length;
+    }
+
+    function enviarWhatsApp() {
+      if(!ordenActiva) return;
+      let tel = ordenActiva.cliente.tel.replace(/\D/g, '');
+      if(tel.startsWith('0')) tel = '58' + tel.substring(1);
+      
+      const texto = `*COMPROBANTE DE RECEPCIÓN*\n` +
+                    `*Orden:* ${ordenActiva.id}\n` +
+                    `*Cliente:* ${ordenActiva.cliente.nombre}\n` +
+                    `*Equipo:* ${ordenActiva.equipo.tipo} ${ordenActiva.equipo.modelo}\n` +
+                    `*Falla:* ${ordenActiva.equipo.falla}\n` +
+                    `*Total:* $${ordenActiva.costos.total} | *Abono:* $${ordenActiva.costos.abono}`;
+
+      window.open(`https://wa.me/${tel}?text=${encodeURIComponent(texto)}`, '_blank');
+    }
+
+    function prepararImpresion(formato) {
+      if(!ordenActiva) return;
+      const sec = document.getElementById('seccion-impresion');
+      sec.classList.remove('hidden');
+
+      if(formato === 'carta') {
+        sec.innerHTML = `
+          <div style="font-family: Arial; padding: 20px; max-width: 700px; margin: auto;">
+            <h2 style="margin:0;">COMPROBANTE DE SERVICIO TÉCNICO</h2>
+            <p><strong>Orden:</strong> ${ordenActiva.id} | <strong>Fecha:</strong> ${ordenActiva.fecha}</p>
+            <hr>
+            <h4>Cliente</h4>
+            <p><strong>Nombre:</strong> ${ordenActiva.cliente.nombre} | <strong>CI/RIF:</strong> ${ordenActiva.cliente.id}</p>
+            <p><strong>Teléfono:</strong> ${ordenActiva.cliente.tel}</p>
+            <hr>
+            <h4>Equipo</h4>
+            <p><strong>Equipo:</strong> ${ordenActiva.equipo.tipo} - ${ordenActiva.equipo.modelo}</p>
+            <p><strong>Clave:</strong> ${ordenActiva.equipo.clave}</p>
+            <p><strong>Falla:</strong> ${ordenActiva.equipo.falla}</p>
+            <p><strong>Observaciones:</strong> ${ordenActiva.equipo.obs}</p>
+            <hr>
+            <p><strong>Total Estimado:</strong> $${ordenActiva.costos.total}</p>
+            <p><strong>Abono:</strong> $${ordenActiva.costos.abono}</p>
+            <br><br>
+            <p style="text-align:center;">_______________________<br>Firma del Cliente</p>
+          </div>
+        `;
+      } else {
+        sec.innerHTML = `
+          <div style="font-family: monospace; width: 280px; font-size: 12px;">
+            <p style="text-align:center;"><strong>SERVICIO TÉCNICO</strong><br>${ordenActiva.id}<br>${ordenActiva.fecha}</p>
+            --------------------------------<br>
+            Cliente: ${ordenActiva.cliente.nombre}<br>
+            Tel: ${ordenActiva.cliente.tel}<br>
+            --------------------------------<br>
+            Equipo: ${ordenActiva.equipo.tipo} ${ordenActiva.equipo.modelo}<br>
+            Clave: ${ordenActiva.equipo.clave}<br>
+            Falla: ${ordenActiva.equipo.falla}<br>
+            --------------------------------<br>
+            Total: $${ordenActiva.costos.total}<br>
+            Abono: $${ordenActiva.costos.abono}<br>
+            --------------------------------<br>
+            <br><p style="text-align:center;">Firma: _________________</p>
+          </div>
+        `;
+      }
+
+      window.print();
+      sec.classList.add('hidden');
+    }
+
+    function cerrarModal() {
+      document.getElementById('modal-acciones').classList.add('hidden');
+      document.getElementById('form-recepcion').reset();
+    }
+
+    function verLista() {
+      document.getElementById('vista-formulario').classList.add('hidden');
+      document.getElementById('vista-lista').classList.remove('hidden');
+      
+      const cont = document.getElementById('contenedor-ordenes');
+      cont.innerHTML = '';
+
+      if(ordenes.length === 0) {
+        cont.innerHTML = '<p class="text-xs text-slate-500 text-center py-4">No hay órdenes registradas.</p>';
+        return;
+      }
+
+      ordenes.forEach(o => {
+        cont.innerHTML += `
+          <div class="bg-slate-800 p-3 rounded-xl border border-slate-700 text-xs space-y-1">
+            <div class="flex justify-between text-blue-400 font-bold">
+              <span>${o.id}</span>
+              <span>${o.fecha}</span>
+            </div>
+            <p class="text-slate-200"><strong>${o.cliente.nombre}</strong> (${o.equipo.modelo})</p>
+            <p class="text-slate-400">Falla: ${o.equipo.falla}</p>
+          </div>
+        `;
+      });
+    }
+
+    function verFormulario() {
+      document.getElementById('vista-lista').classList.add('hidden');
+      document.getElementById('vista-formulario').classList.remove('hidden');
+    }
+  </script>
+</body>
+</html>
